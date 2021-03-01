@@ -14,3 +14,5 @@ which is alias to
 > .$HEADAS/headas-init.sh
 
 in your terminal before starting jupyter notebook.
+
+dT0 and ToF are necessary only when obtaining the data relative to the Konus-Wind trigger times.
