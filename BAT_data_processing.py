@@ -26,7 +26,7 @@ class BAT_data(object):
             - sp_interval: Spectrum time interval (s; relative KW trigger)
             - spID: Designation of the spectrum
             - path2BATdata: Path to the directory containing the BAT folder 'trigID-results/'
-            - new_folder: Folder where the new BAT fits-files will be collected
+            - new_folder: Folder where the new BAT fits-files will be stored
         """
         
         self.verbose = verbose
@@ -326,7 +326,6 @@ class BAT_data(object):
         
         # Accumulate BAT event and DPH data into spectra, lightcurves or images:
         # Extract spectra rebinned in time 
-        
         sys = f"batbinevt infile={evt_file} outfile={pha_file} outtype=PHA timedel=0.0 timebinalg=u \
         tstart={pha_tstart} tstop={pha_tstop} energybins=CALDB:80 outunits=RATE detmask={mask_file} clobber=YES \
         ecol=ENERGY weighted=YES"
