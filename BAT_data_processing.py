@@ -26,7 +26,7 @@ class BAT_data(object):
             - sp_interval: Spectrum time interval (s; relative KW trigger)
             - spID: Designation of the spectrum
             - path2BATdata: Path to the directory containing the BAT folder 'trigID-results/'
-            - new_folder: Folder where the new BAT fits-files will be stored
+            - new_folder: Folder where the new BAT fits-files will be collected
         """
         
         self.verbose = verbose
@@ -130,7 +130,8 @@ class BAT_data(object):
 
                 for i in range(0, n):
                     t1 = t_i + i*5
-                    t2 = t_i + 1 + i*5 if t2 <= inslew_f else inslew_f
+                    t2 = float()
+                    t2 = t1 + 5 if t2 <= inslew_f else inslew_f
                     slice_cnts.append(get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
@@ -156,7 +157,7 @@ class BAT_data(object):
                         
                     t1 = inslew_i + i*5
                     t2 = float()
-                    t2 = inslew_i + 1 + i*5 if t2 <= t_f else t_f
+                    t2 = t1 + 5 if t2 <= t_f else t_f
    
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
@@ -175,7 +176,8 @@ class BAT_data(object):
                 for i in range(0, n):
                         
                     t1 = t_i + i*5
-                    t2 = t_i + 1 + i*5 if t2 <= inslew_f else inslew_f
+                    t2 = float()
+                    t2 = t1 + 5 if t2 <= inslew_f else inslew_f
 
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
@@ -197,7 +199,8 @@ class BAT_data(object):
                 for i in range(0, n):
                         
                     t1 = t_i + i*5
-                    t2 = t_i + 1 + i*5 if t2 <= t_f else t_f
+                    t2 = float()
+                    t2 = t1 + 5 if t2 <= t_f else t_f
 
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
@@ -209,9 +212,12 @@ class BAT_data(object):
         if len(slice_times) == 0:
             slice_times = [[t_i, t_f]]
             weights = [1.]
-            
+        
+        slice_times_print = [list(map('{:0.3f}'.format, i)) for i in slice_times]
+        weights = list(map('{:0.3f}'.format, weights))
+
         if self.verbose:
-            print('Time intervals for aux DRMs:', *slice_times)
+            print('Time intervals for aux DRMs:', *slice_times_print)
             print('Weights of the aux DRMs:', *weights)
 
         self.make_new_bat_drm(slice_times, weights)
@@ -260,11 +266,11 @@ class BAT_data(object):
         rmf_list = list()
         aux_list = list()
 
+        gtinum=1
+
         for times in slice_times:
 
             pha_tstart, pha_tstop = times + (self._MET + self._ToF + self._dT0)* np.ones(2)
-
-            gtinum=1
 
             pha_file = self._path2BAT + f"/{self._name}/{self._trig}-results/{self._new_folder}/sw{self._trig}b_{gtinum}_aux.pha"
         
@@ -284,30 +290,31 @@ class BAT_data(object):
                 print(sys)
             run(sys, shell=True)
 
-            rsp_file = self._path2BAT + f"/{self._name}/{self._trig}-results/{self._new_folder}/sw{self._trig}b_{gtinum}_aux.rsp"
+            rsp_file = f"sw{self._trig}b_{gtinum}_aux.rsp"
 
-            sys = f"batdrmgen infile={pha_file} outfile={rsp_file} hkfile=NONE clobber=yes"
+            sys = f"batdrmgen infile={pha_file} outfile={self._path2BAT}/{self._name}/{self._trig}-results/{self._new_folder}/{rsp_file} hkfile=NONE clobber=yes"
             if self.verbose:
                 print(sys)
             run(sys, shell=True)
 
             rmf_list.append(rsp_file)
-            rmf_line = ','.join(rmf_list)
+            rmf_line = './' + ',./'.join(rmf_list)
             weight_line = ','.join(map(str, weights))
 
             gtinum += 1 
             
+        os.chdir(self._path2BAT + f"/{self._name}/{self._trig}-results/{self._new_folder}/")    
+        sys = f"addrmf {rmf_line} {weight_line} rmffile={rmf_file}"
+        if self.verbose:
+            print(sys)
+        run(sys, shell=True)
+            
 
-            sys = f"addrmf {rmf_line} {weight_line} rmffile={rmf_file}"
-            if self.verbose:
-                print(sys)
-            run(sys, shell=True)
+        for rmf in rmf_list:
+            os.remove(self._path2BAT + f"/{self._name}/{self._trig}-results/{self._new_folder}/"+rmf)
 
-            for rmf in rmf_list:
-                os.remove(rmf)
-
-            for aux in aux_list:
-                os.remove(aux)
+        for aux in aux_list:
+            os.remove(aux)
                 
     def make_pha(self):
         """
@@ -326,6 +333,7 @@ class BAT_data(object):
         
         # Accumulate BAT event and DPH data into spectra, lightcurves or images:
         # Extract spectra rebinned in time 
+        
         sys = f"batbinevt infile={evt_file} outfile={pha_file} outtype=PHA timedel=0.0 timebinalg=u \
         tstart={pha_tstart} tstop={pha_tstop} energybins=CALDB:80 outunits=RATE detmask={mask_file} clobber=YES \
         ecol=ENERGY weighted=YES"
