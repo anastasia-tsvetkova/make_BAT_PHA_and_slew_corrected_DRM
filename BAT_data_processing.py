@@ -26,7 +26,7 @@ class BAT_data(object):
             - sp_interval: Spectrum time interval (s; relative KW trigger)
             - spID: Designation of the spectrum
             - path2BATdata: Path to the directory containing the BAT folder 'trigID-results/'
-            - new_folder: Folder where the new BAT fits-files will be stored
+            - new_folder: Folder where the new BAT fits-files will be collected
         """
         
         self.verbose = verbose
@@ -87,7 +87,9 @@ class BAT_data(object):
             self._new_folder = new_folder
 
         if self.verbose:
+            print()
             print('Burst name:', self._name)
+            print()
             print('Spectrum:', self._idsp, 'lasts from', self._sp_interval[0], 's to', self._sp_interval[1], 's')
             print('Long BAT trigger ID:', self._trig)
             print('Swift Mission Elapsed Time:', self._MET, 's')
@@ -114,6 +116,9 @@ class BAT_data(object):
         inslew_i, inslew_f = self._slew_interval
         
         if t_i <= inslew_i and inslew_f <= t_f:
+            if self.verbose:
+                print(f'GRB {self._name}: DRM will be corrected for the first type s/c slew')
+                    
             t_slew = inslew_f - inslew_i
 
             if t_slew >= 6:
@@ -131,11 +136,12 @@ class BAT_data(object):
 
                 slice_cnts.append(get_bat_counts(inslew_f, t_f))
                 slice_times.append([inslew_f, t_f])
-
-                if self.verbose:
-                    print(f'GRB {self._name}: DRM will be corrected for the first type s/c slew')
+                
 
         elif t_i <= inslew_i and t_f <= inslew_f:
+            if self.verbose:
+                print(f'GRB {self._name}: DRM will be corrected for the second type s/c slew')
+
             t_slew = t_f - inslew_i
 
             if t_slew >= 6 :
@@ -143,7 +149,7 @@ class BAT_data(object):
                 n = floor(t_slew / 5)
                 if t_slew % 5 >= 1: n += 1  
 
-                slice_cnts.append(get_bat_counts(t_i, inslew_i))
+                slice_cnts.append(self.get_bat_counts(t_i, inslew_i))
                 slice_times.append([t_i, inslew_i])
 
                 for i in range(0, n):
@@ -152,13 +158,14 @@ class BAT_data(object):
                     t2 = float()
                     t2 = inslew_i + 1 + i*5 if t2 <= t_f else t_f
    
-                    slice_cnts.append(get_bat_counts(t1, t2))
+                    slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
-                if self.verbose:
-                    print(f'GRB {self._name}: DRM will be corrected for the second type s/c slew')
-
+                
         elif inslew_i <= t_i and inslew_f <= t_f:
+            if self.verbose:
+                print(f'GRB {self._name}: DRM will be corrected for the third type s/c slew')
+                
             t_slew = inslew_f - t_i
 
             if t_slew >= 6:
@@ -170,16 +177,17 @@ class BAT_data(object):
                     t1 = t_i + i*5
                     t2 = t_i + 1 + i*5 if t2 <= inslew_f else inslew_f
 
-                    slice_cnts.append(get_bat_counts(t1, t2))
+                    slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
                 slice_cnts.append(get_bat_counts(inslew_f, t_f))
                 slice_times.append([inslew_f, t_f])
 
-            if self.verbose:
-                print(f'GRB {self._name}: DRM will be corrected for the third type s/c slew')
 
         elif inslew_i <= t_i and t_f <= inslew_f:
+            if self.verbose:
+                print(f'GRB {self._name}: DRM will be corrected for the fourth type s/c slew')
+            
             t_slew = t_f - t_i
 
             if t_slew >= 6:
@@ -191,11 +199,9 @@ class BAT_data(object):
                     t1 = t_i + i*5
                     t2 = t_i + 1 + i*5 if t2 <= t_f else t_f
 
-                    slice_cnts.append(get_bat_counts(t1, t2))
+                    slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
-            if self.verbose:
-                print(f'GRB {self._name}: DRM will be corrected for the fourth type s/c slew')
 
         total_cnts = np.sum(slice_cnts)
         weights = slice_cnts / total_cnts
@@ -222,20 +228,21 @@ class BAT_data(object):
         if t1 >= t2:
             raise TypeError('t2 should be greater than t1')
 
-        fits_filename = self._path2BAT + f"/{self._trigID}-results/lc/sw{self._trigID}b_4chan_64ms.lc"
+        fits_filename = self._path2BAT + f"/{self._name}/{self._trig}-results/lc/sw{self._trig}b_4chan_64ms.lc"
     
         with fits.open(fits_filename) as hdul:
             data = hdul[1].data
             data = np.array([*data])
 
             MET = hdul[1].header['TRIGTIME']
-            data[:,0] = data[:,0] - MET - dT0 - ToF
+            data[:,0] = data[:,0] - self._MET - self._dT0 - self._ToF
 
             cnts = data[t1 < data[:,0]]
             cnts = cnts[cnts[:,0] < t2]
 
             sum_cnts = np.sum(np.sum(cnts[:,1]))
-            return 0.064 * sum_cnts
+            
+        return 0.064 * sum_cnts
       
         
     def make_new_bat_drm(self, slice_times, weights):
@@ -319,6 +326,7 @@ class BAT_data(object):
         
         # Accumulate BAT event and DPH data into spectra, lightcurves or images:
         # Extract spectra rebinned in time 
+        
         sys = f"batbinevt infile={evt_file} outfile={pha_file} outtype=PHA timedel=0.0 timebinalg=u \
         tstart={pha_tstart} tstop={pha_tstop} energybins=CALDB:80 outunits=RATE detmask={mask_file} clobber=YES \
         ecol=ENERGY weighted=YES"
