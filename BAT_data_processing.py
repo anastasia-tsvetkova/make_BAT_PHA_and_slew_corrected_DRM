@@ -125,17 +125,17 @@ class BAT_data(object):
                 n = floor(t_slew / 5)
                 if t_slew % 5 >= 1: n += 1
 
-                slice_cnts.append(get_bat_counts(t_i, inslew_i))
+                slice_cnts.append(self.get_bat_counts(t_i, inslew_i))
                 slice_times.append([t_i, inslew_i])
 
                 for i in range(0, n):
                     t1 = t_i + i*5
                     t2 = float()
                     t2 = t1 + 5 if t2 <= inslew_f else inslew_f
-                    slice_cnts.append(get_bat_counts(t1, t2))
+                    slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
-                slice_cnts.append(get_bat_counts(inslew_f, t_f))
+                slice_cnts.append(self.get_bat_counts(inslew_f, t_f))
                 slice_times.append([inslew_f, t_f])
                 
 
@@ -182,7 +182,7 @@ class BAT_data(object):
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
-                slice_cnts.append(get_bat_counts(inslew_f, t_f))
+                slice_cnts.append(self.get_bat_counts(inslew_f, t_f))
                 slice_times.append([inslew_f, t_f])
 
 
