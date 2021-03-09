@@ -1,5 +1,8 @@
+__author__ = 'Anastasia Tsvetkova'
+__email__ = 'tsvetkova.lea@gmail.com'
+
 from astropy.io import fits
-import os
+import os, inspect
 import numpy as np
 from math import floor
 from subprocess import run
@@ -16,20 +19,20 @@ class BAT_data(object):
         """
         Initialisation of the BAT_data object.
         
-        Parameter:
-            - GRB_name: Burst GCN name
-            - trigID: Long BAT trigger ID
-            - dT0: Difference in KW and BAT trigger times (s)
-            - MET: Swift mission elapsed time (s)
-            - ToF: 'Time of flight' - Time of light propagation between KW and Swift (s)
-            - slew_interval: Time interval when the spacecraft slews (s)
-            - sp_interval: Spectrum time interval (s; relative KW trigger)
-            - spID: Designation of the spectrum
-            - path2BATdata: Path to the directory containing the BAT folder 'trigID-results/'
-            - new_folder: Folder where the new BAT fits-files will be stored
+        Parameterss:
+            :GRB_name: Burst GCN name
+            :trigID: Long BAT trigger ID
+            :dT0: Difference in KW and BAT trigger times (s)
+            :MET: Swift mission elapsed time (s)
+            :ToF: 'Time of flight' - Time of light propagation between KW and Swift (s)
+            :slew_interval: Time interval when the spacecraft slews (s)
+            :sp_interval: Spectrum time interval (s; relative KW trigger)
+            :spID: Designation of the spectrum
+            :path2BATdata: Path to the directory containing the BAT folder 'trigID-results/'
+            :new_folder: Folder where the new BAT fits-files will be stored
         """
         
-        self.verbose = verbose
+        self._verbose = verbose
     
         if not GRB_name:
             raise TypeError('Burst name should be given')
@@ -86,7 +89,7 @@ class BAT_data(object):
         else:
             self._new_folder = new_folder
 
-        if self.verbose:
+        if self._verbose:
             print()
             print('Burst name:', self._name)
             print()
@@ -105,8 +108,8 @@ class BAT_data(object):
         Calculating DRM weights and running a slew-corected DRM
         """
                 
-        if self.verbose:
-            print(self.make_rsp.__doc__)
+        if self._verbose:
+            print(inspect.getdoc(self.make_rsp))
         
         slice_times = list()
         slice_cnts = list()
@@ -116,7 +119,7 @@ class BAT_data(object):
         inslew_i, inslew_f = self._slew_interval
         
         if t_i <= inslew_i and inslew_f <= t_f:
-            if self.verbose:
+            if self._verbose:
                 print(f'GRB {self._name}: DRM will be corrected for the first type s/c slew')
                     
             t_slew = inslew_f - inslew_i
@@ -131,7 +134,7 @@ class BAT_data(object):
                 for i in range(0, n):
                     t1 = t_i + i*5
                     t2 = float()
-                    t2 = t1 + 5 if t2 <= inslew_f else inslew_f
+                    t2 = t1 + 5 if t1 + 5 <= inslew_f else inslew_f
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
@@ -140,7 +143,7 @@ class BAT_data(object):
                 
 
         elif t_i <= inslew_i and t_f <= inslew_f:
-            if self.verbose:
+            if self._verbose:
                 print(f'GRB {self._name}: DRM will be corrected for the second type s/c slew')
 
             t_slew = t_f - inslew_i
@@ -157,14 +160,14 @@ class BAT_data(object):
                         
                     t1 = inslew_i + i*5
                     t2 = float()
-                    t2 = t1 + 5 if t2 <= t_f else t_f
+                    t2 = t1 + 5 if t1 + 5 <= t_f else t_f
    
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
 
                 
         elif inslew_i <= t_i and inslew_f <= t_f:
-            if self.verbose:
+            if self._verbose:
                 print(f'GRB {self._name}: DRM will be corrected for the third type s/c slew')
                 
             t_slew = inslew_f - t_i
@@ -177,7 +180,7 @@ class BAT_data(object):
                         
                     t1 = t_i + i*5
                     t2 = float()
-                    t2 = t1 + 5 if t2 <= inslew_f else inslew_f
+                    t2 = t1 + 5 if t1 + 5 <= inslew_f else inslew_f
 
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
@@ -187,7 +190,7 @@ class BAT_data(object):
 
 
         elif inslew_i <= t_i and t_f <= inslew_f:
-            if self.verbose:
+            if self._verbose:
                 print(f'GRB {self._name}: DRM will be corrected for the fourth type s/c slew')
             
             t_slew = t_f - t_i
@@ -200,7 +203,7 @@ class BAT_data(object):
                         
                     t1 = t_i + i*5
                     t2 = float()
-                    t2 = t1 + 5 if t2 <= t_f else t_f
+                    t2 = t1 + 5 if t1 + 5 <= t_f else t_f
 
                     slice_cnts.append(self.get_bat_counts(t1, t2))
                     slice_times.append([t1, t2])
@@ -216,7 +219,7 @@ class BAT_data(object):
         slice_times_print = [list(map('{:0.3f}'.format, i)) for i in slice_times]
         weights = list(map('{:0.3f}'.format, weights))
 
-        if self.verbose:
+        if self._verbose:
             print('Time intervals for aux DRMs:', *slice_times_print)
             print('Weights of the aux DRMs:', *weights)
 
@@ -228,8 +231,8 @@ class BAT_data(object):
         Extracting counts for a certain time interval from a BAT light curve
         """
         
-        if self.verbose:
-            print(self.get_bat_counts.__doc__)
+        if self._verbose:
+            print(inspect.getdoc(self.get_bat_counts))
             
         if t1 >= t2:
             raise TypeError('t2 should be greater than t1')
@@ -256,8 +259,8 @@ class BAT_data(object):
         Making a slew-corrected DRM
         """
         
-        if self.verbose:
-            print(self.make_new_bat_drm.__doc__)
+        if self._verbose:
+            print(inspect.getdoc(self.make_new_bat_drm))
 
         evt_file = self._path2BAT + f"/{self._name}/{self._trig}-results/events/sw{self._trig}b_all.evt"
         mask_file= self._path2BAT + f"/{self._name}/{self._trig}-results/auxil/sw{self._trig}b_qmap.fits"
@@ -278,7 +281,7 @@ class BAT_data(object):
             sys = f"batbinevt infile={evt_file} outfile={pha_file} outtype=PHA timedel=0 timebinalg=u \
             energybins=CALDB:80 tstart={pha_tstart} tstop={pha_tstop} outunits=RATE detmask={mask_file} \
             clobber=yes ecol=ENERGY weighted=YES"
-            if self.verbose:
+            if self._verbose:
                 print(sys)
             run(sys, shell=True)
             
@@ -286,14 +289,14 @@ class BAT_data(object):
         
             # Update BAT ray tracing columns in spectral files 
             sys = f"batupdatephakw infile={pha_file} auxfile={ray_tracer_file}"
-            if self.verbose:
+            if self._verbose:
                 print(sys)
             run(sys, shell=True)
 
             rsp_file = f"sw{self._trig}b_{gtinum}_aux.rsp"
 
             sys = f"batdrmgen infile={pha_file} outfile={self._path2BAT}/{self._name}/{self._trig}-results/{self._new_folder}/{rsp_file} hkfile=NONE clobber=yes"
-            if self.verbose:
+            if self._verbose:
                 print(sys)
             run(sys, shell=True)
 
@@ -305,7 +308,7 @@ class BAT_data(object):
             
         os.chdir(self._path2BAT + f"/{self._name}/{self._trig}-results/{self._new_folder}/")    
         sys = f"addrmf {rmf_line} {weight_line} rmffile={rmf_file}"
-        if self.verbose:
+        if self._verbose:
             print(sys)
         run(sys, shell=True)
             
@@ -321,8 +324,8 @@ class BAT_data(object):
         Making a pha file
         """
         
-        if self.verbose:
-            print(self.make_pha.__doc__)
+        if self._verbose:
+            print(inspect.getdoc(self.make_pha))
 
         pha_tstart, pha_tstop = self._sp_interval + (self._MET + self._ToF + self._dT0)* np.ones(2)
         
@@ -336,18 +339,18 @@ class BAT_data(object):
         sys = f"batbinevt infile={evt_file} outfile={pha_file} outtype=PHA timedel=0.0 timebinalg=u \
         tstart={pha_tstart} tstop={pha_tstop} energybins=CALDB:80 outunits=RATE detmask={mask_file} clobber=YES \
         ecol=ENERGY weighted=YES"
-        if self.verbose:
+        if self._verbose:
             print(sys)
         run(sys, shell=True)    
         
         # Update BAT ray tracing columns in spectral files 
         sys = f"batupdatephakw infile={pha_file} auxfile={ray_tracer_file}"
-        if self.verbose:
+        if self._verbose:
             print(sys)
         run(sys, shell=True)
         
         # Apply BAT spectral systematic error vector
         sys = f"batphasyserr infile={pha_file} syserrfile=CALDB"
-        if self.verbose:
+        if self._verbose:
             print(sys)
         run(sys, shell=True)
